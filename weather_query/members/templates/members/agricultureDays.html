@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agriculture Days</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            justify-content: center; /* Centra orizzontalmente */
+            align-items: flex-start; /* Centra verticalmente nella parte superiore */
+            width: 80%;
+            max-width: 1200px; /* Imposta una larghezza massima per non avere riquadri troppo larghi */
+        }
+        .form-container {
+            width: 40%;
+            text-align: center;
+            background: #fff;
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .results-container {
+            width: 55%;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            max-height: 500px;
+            margin-left: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+        .legend {
+            margin-top: 20px;
+        }
+
+        /* Nuovo stile per i bottoni sotto il form */
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #filterButton, .show-all-button {
+            display: block; /* Fa in modo che i bottoni siano su righe separate */
+            margin-top: 10px; /* Aggiungi uno spazio sopra il bottone */
+            margin-bottom: 10px; /* Aggiungi uno spazio sotto il bottone */
+            width: 100%; /* Rendi il bottone largo quanto l'elemento genitore */
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .show-all-button:hover, .filter-button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1>Agriculture Days</h1>
+            <form id="monthForm">
+                <label for="month">Select Month:</label>
+                <select id="month" name="month">
+                    {% for month in months %}
+                        <option value="{{ forloop.counter }}">{{ month }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="fetchResults()">Find</button>
+            </form>
+            
+            <!-- leggenda  -->
+            <div class="legend">
+                <h3>Legend:</h3>
+                <p>Days with temperatures between 60-75°F, humidity 40-60% and no storms/rain</p>
+            </div>
+
+            <!-- Bottone per tornare alla home -->
+            <button class="back-button" onclick="window.location.href='/'">Back to Main Menu</button>
+
+            <!-- Contenitore per i bottoni sotto il form -->
+            <div class="button-container">
+                <div id="wban-selection-container" style="display: none;">
+                    <label for="wban-select">Select Station:</label>
+                    <select id="wban-select">
+                        <!-- Le opzioni per WBAN verranno aggiunte dinamicamente -->
+                    </select>
+                    <button id="filterButton" class="filter-button" onclick="filterByWBAN()">Filter</button>
+                </div>
+                
+                <div id="show-all-container" style="display: none;">
+                    <button class="show-all-button" onclick="showAllResults()">Show All Results</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-container">
+            <h2>Ideal Days for Agriculture</h2>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let allResults = []; // Variabile per memorizzare tutti i risultati
+        let isFiltered = false; // Variabile per gestire lo stato del filtro
+
+        function fetchResults() {
+            const month = document.getElementById("month").value;
+
+            fetch(`/agriculture-day?month=${month}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById("results");
+                    resultsDiv.innerHTML = ""; // Clear previous results
+
+                    if (data.error) {
+                        resultsDiv.innerHTML = `<p class="error">${data.error}</p>`;
+                        return;
+                    }
+
+                    if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+                        allResults = data.results; // Memorizza i risultati
+                        const days = allResults.map(day => `
+                            <div class="result" data-wban="${day.WBAN}">
+                                <p><strong>Date:</strong> ${day.YearMonthDay}</p>
+                                <p><strong>Station (WBAN):</strong> ${day.WBAN}</p>
+                                <p><strong>Average Temp (Tavg):</strong> ${day.Tavg} °F</p>
+                                <p><strong>Dew Point:</strong> ${day.DewPoint} °F</p>
+                                <p><strong>Precipitation:</strong> ${day.PrecipTotal} mm</p>
+                                <p><strong>Wet Bulb Temperature:</strong> ${day.WetBulb} °F</p>
+                            </div>
+                        `).join('');
+                        resultsDiv.innerHTML = days;
+
+                        // Popola il menu a tendina WBAN
+                        populateWBANSelect(data.results);
+                    } else {
+                        resultsDiv.innerHTML = `<p>No ideal days for agriculture found for the selected month.</p>`;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    document.getElementById("results").innerHTML = `
+                        <p class="error">An error occurred while fetching the data. Please try again later.</p>
+                    `;
+                });
+        }
+
+        function populateWBANSelect(results) {
+            const wbanSelect = document.getElementById("wban-select");
+            wbanSelect.innerHTML = ''; // Clear previous options
+
+            const uniqueWBANs = [...new Set(results.map(item => item.WBAN))];
+            uniqueWBANs.forEach(wban => {
+                const option = document.createElement("option");
+                option.value = wban;
+                option.textContent = `WBAN ${wban}`;
+                wbanSelect.appendChild(option);
+            });
+
+            document.getElementById("wban-selection-container").style.display = 'block';
+        }
+
+        function filterByWBAN() {
+            const selectedWBAN = document.getElementById("wban-select").value;
+            const resultsDiv = document.getElementById("results");
+
+            const filteredResults = allResults.filter(result => result.WBAN == selectedWBAN);
+
+            resultsDiv.innerHTML = filteredResults.map(day => `
+                <div class="result" data-wban="${day.WBAN}">
+                        <p><strong>Date:</strong> ${day.YearMonthDay}</p>
+                        <p><strong>Station (WBAN):</strong> ${day.WBAN}</p>
+                        <p><strong>Average Temp (Tavg):</strong> ${day.Tavg} °F</p>
+                        <p><strong>Dew Point:</strong> ${day.DewPoint} °F</p>
+                        <p><strong>Precipitation:</strong> ${day.PrecipTotal} mm</p>
+                        <p><strong>Wet Bulb Temperature:</strong> ${day.WetBulb} °F</p>
+                    </div>
+                `).join('');
+
+            // Cambia il tasto "Filter" in "Show All Results"
+            document.getElementById("filterButton").style.display = 'none';
+            document.getElementById("show-all-container").style.display = 'block';
+
+            isFiltered = true; // Indica che sono stati applicati filtri
+        }
+
+        function showAllResults() {
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = allResults.map(day => `
+                <div class="result" data-wban="${day.WBAN}">
+                    <p><strong>Date:</strong> ${day.YearMonthDay}</p>
+                    <<p><strong>Station (WBAN):</strong> ${day.WBAN}</p>
+                    <p><strong>Average Temp (Tavg):</strong> ${day.Tavg} °F</p>
+                    <p><strong>Dew Point:</strong> ${day.DewPoint} °F</p>
+                    <p><strong>Precipitation:</strong> ${day.PrecipTotal} mm</p>
+                    <p><strong>Wet Bulb Temperature:</strong> ${day.WetBulb} °F</p>
+                </div>
+            `).join('');
+
+            // Cambia il tasto "Show All Results" in "Filter"
+            document.getElementById("filterButton").style.display = 'block';
+            document.getElementById("show-all-container").style.display = 'none';
+
+            isFiltered = false; // Indica che non ci sono filtri attivi
+        }
+    </script>
+</body>
+</html>

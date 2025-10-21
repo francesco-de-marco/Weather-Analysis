@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hourly Temperature Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f8f9fa;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 800px;
+        }
+        h1 {
+            color: #333333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+        }
+        label {
+            margin-bottom: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #555555;
+        }
+        select, button {
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .chart-container {
+            margin-top: 30px;
+            width: 100%;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .error {
+            color: #ff0000;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .loading-message {
+            color: #007bff;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .chart-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hourly Weather Data</h1>
+        <form id="weather-form">
+            <label for="state_code">State Code:</label>
+            <select id="state_code" name="state_code">
+                <option value="">Select State</option>
+                {% for state_code, state_name in states.items %}
+                    <option value="{{ state_code }}">{{ state_name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="wban">WBAN:</label>
+            <select id="wban" name="wban">
+                <option value="None">None</option>
+            </select>
+
+            <label for="month">Month:</label>
+            <select id="month" name="month">
+                {% for month in months %}
+                    <option value="{{ month }}">{{ month }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="info">Info:</label>
+            <select id="info" name="info">
+                {% for column in columns %}
+                    <option value="{{ column.key }}">{{ column.description }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit">Find</button>
+        </form>
+
+        <div id="loading" class="loading-message" style="display: none;">
+            Loading...
+        </div>
+
+        <div class="chart-container">
+            <canvas id="hourly-chart"></canvas>
+        </div>
+
+        <div id="chart-title" class="chart-title"></div>
+        <div id="result"></div>
+
+        <button class="back-button" onclick="window.location.href='/'">Back to Main Menu</button>
+    </div>
+
+    <script>
+        let chartInstance = null;
+
+        document.getElementById("state_code").addEventListener("change", function() {
+            const state_code = this.value;
+            const wbanSelect = document.getElementById("wban");
+
+            wbanSelect.innerHTML = '<option value="None">None</option>';
+
+            if (!state_code) {
+                return;
+            }
+
+            fetch(`/get-wban-list?state_code=${state_code}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                        return;
+                    }
+
+                    data.wban_list.forEach(wban => {
+                        const option = document.createElement("option");
+                        option.value = wban;
+                        option.textContent = wban;
+                        wbanSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching WBAN list:", error);
+                });
+        });
+
+        document.getElementById("weather-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const state_code = document.getElementById("state_code").value;
+            const month = document.getElementById("month").value;
+            const info = document.getElementById("info").value;
+            const wban = document.getElementById("wban").value;
+
+            const loadingMessage = document.getElementById("loading");
+            const chartTitle = document.getElementById("chart-title");
+            const resultsDiv = document.getElementById("result");
+
+            loadingMessage.style.display = "block";
+            chartTitle.textContent = ""; 
+            resultsDiv.innerHTML = "";
+
+            fetch(`/hourly-data?state_code=${state_code}&month=${month}&info=${info}&wban=${wban}`)
+                .then(response => response.json())
+                .then(data => {
+                    loadingMessage.style.display = "none";
+
+                    if (data.error) {
+                        resultsDiv.innerHTML = `<p class="error">${data.error}</p>`;
+                        return;
+                    }
+
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+
+                    chartTitle.textContent = `State: ${state_code}, Month: ${month}, WBAN: ${wban}`;
+
+                    const chartData = {
+                        labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+                        datasets: [{
+                            label: `Hourly ${info} (${data.unit})`,
+                            data: data.result,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    };
+
+                    const ctx = document.getElementById('hourly-chart').getContext('2d');
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: chartData
+                    });
+                })
+                .catch(error => {
+                    loadingMessage.style.display = "none";
+                    console.error("Error:", error);
+                    resultsDiv.innerHTML = `
+                        <p class="error">An error occurred while fetching the data. Please try again later.</p>
+                    `;
+                });
+        });
+    </script>
+</body>
+</html>

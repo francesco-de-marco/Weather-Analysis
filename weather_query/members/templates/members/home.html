@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Big Data Weather</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+        }
+        h1 {
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            color: #333;
+        }
+        .card-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        .card {
+            background-color: #007BFF;
+            color: white;
+            width: 200px;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .card:hover {
+            background-color: #0056b3;
+        }
+        .card img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 15px;
+        }
+        .card a {
+            text-decoration: none;
+            color: white;
+            font-size: 1.2rem;
+        }
+        .card a:hover {
+            color: #ffdd57;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Big Data Weather</h1>
+        <div class="card-container">
+            <div class="card">
+                <alt="Storm Events">
+                <a href="{% url 'tempAvg' %}">Temp Avg Monthly</a>
+            </div>
+            <div class="card">
+                <alt="Stations">
+                <a href="{% url 'station' %}">Info Station</a>
+            </div>
+            <div class="card">
+                <alt="Anomalous Days">
+                <a href="{% url 'dayAnom' %}">Anomalous Days</a>
+            </div>
+            <div class="card">
+                <alt="Hourly Weather">
+                <a href="{% url 'tempHour' %}">Hourly Weather</a>
+            </div>
+            <div class="card">
+                <alt="Agriculture Days">
+                <a href="{% url 'agricultureDays' %}">Ideal Days for Agriculture</a>
+            </div>
+            <div class="card">
+                <alt="Weather Time">
+                <a href="{% url 'typeQuery' %}">Weather H/D/M</a>
+            </div>
+            <div class="card">
+                <alt="Unreliable">
+                <a href="{% url 'unreliable' %}">Unreliable Station</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

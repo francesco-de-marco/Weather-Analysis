@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomalous Days</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            display: flex;
+            justify-content: center; /* Centra orizzontalmente */
+            align-items: flex-start; /* Centra verticalmente nella parte superiore */
+            width: 80%;
+            max-width: 1200px; /* Imposta una larghezza massima per non avere riquadri troppo larghi */
+        }
+        .form-container {
+            width: 40%;
+            text-align: center;
+            background: #fff;
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .results-container {
+            width: 55%;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            max-height: 500px;
+            margin-left: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1>Anomalous Days</h1>
+            <form id="monthForm">
+                <label for="month">Month:</label>
+                <select id="month" name="month">
+                    {% for month in months %}
+                        <option value="{{ forloop.counter }}">{{ month }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="fetchResults()">Find</button>
+            </form>
+            <button class="back-button" onclick="window.location.href='/'">Back to Main Menu</button>
+        
+
+            <!-- leggenda  -->
+            <div class="legend">
+                <h3>Legend:</h3>
+                <p>Days with a temperature deviation > 5°F from the seasonal average and with wind speeds > 20 mph or precipitation totals > 1 inch.</p>
+                <p><strong>T</strong> = Small quantity to measure (less than 0.01 mm)</p>
+            </div>
+        </div>
+        <div class="results-container">
+            <h2>Results</h2>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        function fetchResults() {
+            const month = document.getElementById("month").value;
+
+            fetch(`/anomalus-day?month=${month}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById("results");
+                    resultsDiv.innerHTML = ""; // Clear previous results
+
+                    if (data.error) {
+                        resultsDiv.innerHTML = `<p class="error">${data.error}</p>`;
+                        return;
+                    }
+
+                    // Verifica che 'results' contenga dati e mostra i risultati
+                    if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+                        const days = data.results.map(day => `
+                            <div class="result">
+                                <p><strong>Date:</strong> ${day.YearMonthDay}</p>
+                                <p><strong>Station:</strong> ${day.WBAN}</p>
+                                <p><strong>Deviazione Temp:</strong> ${day.Depart} °F</p>
+                                <p><strong>Max Speed Vento:</strong> ${day.Max5Speed} km/h</p>
+                                <p><strong>Precipitation:</strong> ${day.PrecipTotal} mm</p>
+                            </div>
+                        `).join('');
+                        resultsDiv.innerHTML = days;
+                    } else {
+                        resultsDiv.innerHTML = `<p>No anomalous days found for the selected month.</p>`;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    document.getElementById("results").innerHTML = `
+                        <p class="error">An error occurred while fetching the data. Please try again later.</p>
+                    `;
+                });
+        }
+    </script>
+</body>
+</html>

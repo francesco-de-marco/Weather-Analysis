@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unreliable WBAN Query</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            max-width: 1000px;
+        }
+        .left-section, .right-section {
+            flex: 1;
+            padding: 20px;
+        }
+        .right-section {
+            margin-left: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            margin-left: 10px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+        }
+        .result table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .result th, .result td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        .result th {
+            background-color: #007BFF;
+            color: white;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .loading {
+            color: #007BFF;
+            font-weight: bold;
+        }
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="right-section">
+            <h1>Unreliable WBAN Query</h1>
+            <form id="unreliableQueryForm">
+                <!-- State Selection -->
+                <label for="state_code">State:</label>
+                <select id="state_code" name="state_code">
+                    <option value="tutti">All States</option>
+                    {% for state_code, state_name in states.items %}
+                        <option value="{{ state_code }}">{{ state_name }}</option>
+                    {% endfor %}
+                </select>
+                <br><br>
+
+                <!-- Month Start Selection -->
+                <label for="month_start">Month Start:</label>
+                <select id="month_start" name="month_start">
+                    {% for month in months %}
+                        <option value="{{ month }}">{{ month }}</option>
+                    {% endfor %}
+                </select>
+                <br><br>
+
+                <!-- Month End Selection -->
+                <label for="month_end">Month End:</label>
+                <select id="month_end" name="month_end">
+                    {% for month in months %}
+                        <option value="{{ month }}">{{ month }}</option>
+                    {% endfor %}
+                </select>
+                <br><br>
+
+                <button type="button" onclick="fetchUnreliableResults()">Find Top Unreliable WBANs</button>
+            </form>
+        </div>
+
+        <div class="left-section">
+            <h2>Results</h2>
+            <div id="loadingMessage" class="loading" style="display:none;">Loading...</div>
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+
+    <button class="back-button" onclick="window.location.href='/'">Back to Main Menu</button>
+
+    <script>
+        function fetchUnreliableResults() {
+            const stateCode = document.getElementById("state_code").value;
+            const monthStart = document.getElementById("month_start").value;
+            const monthEnd = document.getElementById("month_end").value;
+
+            // Show loading message
+            document.getElementById("loadingMessage").style.display = "block";
+            document.getElementById("result").innerHTML = ""; // Clear previous results
+    
+            // Fetch data using dynamic parameters
+            fetch(`/query_unreliable_stations?state_code=${stateCode}&month_start=${monthStart}&month_end=${monthEnd}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById("result");
+                    resultsDiv.innerHTML = ""; // Clear previous results
+
+                    // Hide loading message
+                    document.getElementById("loadingMessage").style.display = "none";
+    
+                    if (data.error) {
+                        resultsDiv.innerHTML = `<p class="error">${data.error}</p>`;
+                        return;
+                    }
+
+                    // Display results as a table
+                    if (data.unreliable_wbans && data.unreliable_wbans.length > 0) {
+                        let resultHTML = `
+                            <table>
+                                <tr>
+                                    <th>WBAN</th>
+                                    <th>Suspicious Count</th>
+                                </tr>`;
+                        data.unreliable_wbans.forEach(wban => {
+                            resultHTML += `
+                                <tr>
+                                    <td>${wban.WBAN}</td>
+                                    <td>${wban.suspicious_count}</td>
+                                </tr>`;
+                        });
+                        resultHTML += `</table>`;
+                        resultsDiv.innerHTML = resultHTML;
+                    } else {
+                        resultsDiv.innerHTML = `<p>No unreliable WBANs found for the selected range.</p>`;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    document.getElementById("result").innerHTML = `
+                        <p class="error">An error occurred while fetching the data. Please try again later.</p>
+                    `;
+                    // Hide loading message in case of error
+                    document.getElementById("loadingMessage").style.display = "none";
+                });
+        }
+    </script>
+</body>
+</html>

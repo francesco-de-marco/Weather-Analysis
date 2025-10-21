@@ -1,0 +1,20 @@
+# File temporanei e di cache di Python
+**/__pycache__/
+*.pyc
+
+# Ambiente virtuale
+venv/
+bigdata/
+
+# File di database locali (se usi SQLite)
+*.sqlite3
+
+# File di configurazione sensibili/locali
+*.env
+
+# IDE e file di sistema
+.idea/
+.vscode/
+.DS_Store
+# Log e temporanei di Spark o Django
+*.log
